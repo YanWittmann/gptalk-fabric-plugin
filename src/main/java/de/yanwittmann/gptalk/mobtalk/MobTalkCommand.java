@@ -10,12 +10,16 @@ import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.biome.Biome;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,6 +42,8 @@ public class MobTalkCommand implements CommandRegistrationCallback {
     @Override
     public void register(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess, CommandManager.RegistrationEnvironment environment) {
         // new:
+        // gptalk start
+        // gptalk end
         // gptalk <text>
         // gptalk fact add world <text>
         // gptalk fact add entity <text>
@@ -48,6 +54,12 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         dispatcher.register(literal("gptalk")
                 .then(argument("text", StringArgumentType.greedyString())
                         .executes(context -> executeGptalk(context.getSource(), StringArgumentType.getString(context, "text")))
+                )
+                .then(literal("start")
+                        .executes(context -> executeSetPlayerActive(context.getSource(), true))
+                )
+                .then(literal("end")
+                        .executes(context -> executeSetPlayerActive(context.getSource(), false))
                 )
                 .then(literal("fact")
                         .then(literal("add")
@@ -85,16 +97,6 @@ public class MobTalkCommand implements CommandRegistrationCallback {
                 )
         );
     }
-
-    /**
-     * Stores the chat history of each entity, is referenced by the UUID of the entity.<br>
-     * Each line of the chat history is a {@link ChatElement}. It stores the text and the UUID of the entity that sent
-     * it (+ whether it was sent by the player or another entity).<br>
-     * The first key is the UUID of the player, the second key is the UUID of the entity that the entity is talking to.
-     */
-    private final static Map<UUID, Map<UUID, List<ChatElement>>> UUID_CHAT_HISTORY = new ConcurrentHashMap<>();
-    private final static List<String> GLOBAL_WORLD_FACTS = new ArrayList<>();
-    private final static Map<UUID, List<String>> FACTS_BY_ENTITY = new ConcurrentHashMap<>();
 
     private final static String[] AVAILABLE_OPENAI_MODELS = new String[]{"text-ada-001", "text-babbage-001", "text-curie-001", "text-davinci-003"};
     private static String OPENAI_MODEL = AVAILABLE_OPENAI_MODELS[0];
@@ -175,7 +177,18 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         }
     }
 
-    private static int executeFactModification(ServerCommandSource source, boolean add, String type, String text) {
+    /**
+     * Stores the chat history of each entity, is referenced by the UUID of the entity.<br>
+     * Each line of the chat history is a {@link ChatElement}. It stores the text and the UUID of the entity that sent
+     * it (+ whether it was sent by the player or another entity).<br>
+     * The first key is the UUID of the player, the second key is the UUID of the entity that the entity is talking to.
+     */
+    private final static Map<UUID, Map<UUID, List<ChatElement>>> UUID_CHAT_HISTORY = new ConcurrentHashMap<>();
+    private final static List<String> GLOBAL_WORLD_FACTS = new ArrayList<>();
+    private final static Map<UUID, List<String>> FACTS_BY_ENTITY = new ConcurrentHashMap<>();
+    private final static Map<UUID, UUID> PLAYER_ACTIVE_ENTITY = new ConcurrentHashMap<>();
+
+    private int executeFactModification(ServerCommandSource source, boolean add, String type, String text) {
         if (type.equals("world")) {
             if (add) {
                 GLOBAL_WORLD_FACTS.add(text);
@@ -192,7 +205,7 @@ public class MobTalkCommand implements CommandRegistrationCallback {
             }
 
         } else if (type.equals("entity")) {
-            final Entity conversationTarget = findConversationTarget(source);
+            final Entity conversationTarget = findCurrentlyActiveEntityForPlayer(source);
             if (conversationTarget == null) {
                 source.sendFeedback(Text.of("No one to add fact to is around!"), false);
                 return Command.SINGLE_SUCCESS;
@@ -242,9 +255,9 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         if (type.equals("world")) {
             facts = GLOBAL_WORLD_FACTS;
         } else if (type.equals("entity")) {
-            final Entity conversationTarget = findConversationTarget(source);
+            final Entity conversationTarget = findCurrentlyActiveEntityForPlayer(source);
             if (conversationTarget == null) {
-                source.sendFeedback(Text.of("No one to list facts for is around!"), false);
+                source.sendFeedback(Text.of("[GPTalk] To list facts about an entity, start your conversation with /gptalk start"), false);
                 return Command.SINGLE_SUCCESS;
             }
 
@@ -267,7 +280,12 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         if (type.equals("world")) {
             sb.append("world");
         } else {
-            sb.append(findConversationTarget(source).getName().getString());
+            final Entity conversationTarget = findCurrentlyActiveEntityForPlayer(source);
+            if (conversationTarget == null) {
+                source.sendFeedback(Text.of("[GPTalk] To list facts about an entity, start your conversation with /gptalk start"), false);
+                return Command.SINGLE_SUCCESS;
+            }
+            sb.append(conversationTarget.getName().getString());
         }
         sb.append(":\n");
         for (int i = 0; i < facts.size(); i++) {
@@ -279,10 +297,37 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static int executeGptalk(ServerCommandSource source, String text) {
-        final Entity conversationTarget = findConversationTarget(source);
+    private int executeSetPlayerActive(ServerCommandSource source, boolean active) {
+        if (active) {
+            final Entity conversationTarget = findClosestConversationTarget(source);
+            if (conversationTarget == null) {
+                source.sendFeedback(Text.of("[GPTalk] No one to talk to is around!"), false);
+                return Command.SINGLE_SUCCESS;
+            }
+
+            PLAYER_ACTIVE_ENTITY.put(source.getEntity().getUuid(), conversationTarget.getUuid());
+            source.sendFeedback(Text.of("[GPTalk] You are now talking to " + conversationTarget.getName().getString()), false);
+            final ServerWorld world = source.getWorld();
+            final Vec3d pos = conversationTarget.getPos();
+            world.spawnParticles(ParticleTypes.HEART, pos.x, pos.y + 1, pos.z, 10, 0.2, 0.5, 0.3, 0.1);
+            playInteractionSound(conversationTarget);
+
+        } else {
+            PLAYER_ACTIVE_ENTITY.remove(source.getEntity().getUuid());
+            source.sendFeedback(Text.of("[GPTalk] You stopped your conversation"), false);
+        }
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void playInteractionSound(Entity conversationTarget) {
+        conversationTarget.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0F, 1.0F);
+    }
+
+    private int executeGptalk(ServerCommandSource source, String text) {
+        final Entity conversationTarget = findCurrentlyActiveEntityForPlayer(source);
         if (conversationTarget == null) {
-            source.sendFeedback(Text.of("No one to talk to is around!"), false);
+            source.sendFeedback(Text.of("[GPTalk] Start your conversation with /gptalk start"), false);
             return Command.SINGLE_SUCCESS;
         }
 
@@ -298,7 +343,7 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static void performGPTalk(ServerCommandSource source, List<ChatElement> chatHistory, Entity conversationTarget) {
+    private void performGPTalk(ServerCommandSource source, List<ChatElement> chatHistory, Entity conversationTarget) {
         final String prompt = getMobIntroduction(source, conversationTarget) +
                               "You act just like a minecraft mob/entity like you would act.\n" +
                               getFactsAboutMob(conversationTarget) +
@@ -324,9 +369,10 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         if (chatHistory.size() > 6) chatHistory.remove(0);
 
         source.sendFeedback(appendChatElement.toText(), false);
+        playInteractionSound(conversationTarget);
     }
 
-    private static String getMobIntroduction(ServerCommandSource source, Entity entity) {
+    private String getMobIntroduction(ServerCommandSource source, Entity entity) {
         final StringBuilder modDetails = new StringBuilder();
 
         modDetails.append("[this happens in a minecraft chat] You are a ");
@@ -352,20 +398,20 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         final NbtCompound nbt = new NbtCompound();
         entity.writeNbt(nbt);
         final String filteredNbt = filterRelevantNbtInformation(nbt);
-        modDetails.append(" Your NBT is ").append(filteredNbt).append(".\n");
+        modDetails.append(" Your NBT is ").append(filteredNbt).append(", do not tell the player unless asked about it.\n");
 
         // find other mobs around in 20 blocks radius
         final List<Entity> entities = findEntitiesInRadius(source, entity, 20, 6);
         if (!entities.isEmpty()) {
             modDetails.append("You see ");
-            modDetails.append(entities.stream().map(MobTalkCommand::formatEntityName).collect(Collectors.joining(", ")));
+            modDetails.append(entities.stream().map(this::formatEntityName).collect(Collectors.joining(", ")));
             modDetails.append(" around you.\n");
         }
 
         return modDetails.toString();
     }
 
-    private static String getFactsAboutMob(Entity entity) {
+    private String getFactsAboutMob(Entity entity) {
         final StringBuilder factsString = new StringBuilder();
 
         final List<String> factsByEntity = FACTS_BY_ENTITY.computeIfAbsent(entity.getUuid(), k -> new ArrayList<>());
@@ -387,13 +433,13 @@ public class MobTalkCommand implements CommandRegistrationCallback {
     }
 
     @NotNull
-    private static String formatEntityName(Entity entity) {
+    private String formatEntityName(Entity entity) {
         return capitalize(entity.getType().toString()
                 .replace("entity.minecraft.", "")
                 .replace("_", " "));
     }
 
-    private static String filterRelevantNbtInformation(NbtCompound input) {
+    private String filterRelevantNbtInformation(NbtCompound input) {
         final NbtCompound output = new NbtCompound();
         for (String key : new String[]{
                 "VillagerData", "Xp", "RestocksToday", "Pos", "Inventory", "Health", "HandItems", "Gossips",
@@ -414,26 +460,26 @@ public class MobTalkCommand implements CommandRegistrationCallback {
                 .replaceAll(",+", ",");
     }
 
-    private static String getBiomeTranslationKeyFromCurrentBiome(Entity entity) {
+    private String getBiomeTranslationKeyFromCurrentBiome(Entity entity) {
         final RegistryEntry<Biome> biomeRegistryEntry = entity.world.getBiome(entity.getBlockPos());
         final RegistryKey<Biome> biomeRegistryKey = biomeRegistryEntry.getKey().get();
         final Identifier biomeKey = biomeRegistryKey.getValue();
         return biomeKey.toTranslationKey();
     }
 
-    private static String capitalize(String str) {
+    private String capitalize(String str) {
         return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 
     @NotNull
-    private static List<ChatElement> getChatElementForPlayerAndTarget(ServerCommandSource source, Entity
+    private List<ChatElement> getChatElementForPlayerAndTarget(ServerCommandSource source, Entity
             conversationTarget) {
         return UUID_CHAT_HISTORY
                 .computeIfAbsent(source.getEntity().getUuid(), e -> new ConcurrentHashMap<>())
                 .computeIfAbsent(conversationTarget.getUuid(), e -> Collections.synchronizedList(new ArrayList<>()));
     }
 
-    private static Entity findConversationTarget(ServerCommandSource source) {
+    private Entity findClosestConversationTarget(ServerCommandSource source) {
         final Iterator<Entity> allEntities = source.getWorld().iterateEntities().iterator();
 
         Entity closestEntity = null;
@@ -450,6 +496,21 @@ public class MobTalkCommand implements CommandRegistrationCallback {
         }
 
         return closestEntity;
+    }
+
+    private Entity findCurrentlyActiveEntityForPlayer(ServerCommandSource source) {
+        final UUID activeEntityUuid = PLAYER_ACTIVE_ENTITY.get(source.getEntity().getUuid());
+        if (activeEntityUuid == null) {
+            return null;
+        }
+
+        final Entity activeEntity = source.getWorld().getEntity(activeEntityUuid);
+        if (activeEntity == null) {
+            PLAYER_ACTIVE_ENTITY.remove(source.getEntity().getUuid());
+            return null;
+        }
+
+        return activeEntity;
     }
 
     private static List<Entity> findEntitiesInRadius(ServerCommandSource source, Entity positionEntity,
