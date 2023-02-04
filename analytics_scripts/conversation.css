@@ -1,0 +1,96 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+h2 {
+    font-size: 1.2em;
+    margin-bottom: 0.3em;
+    font-weight: normal;
+}
+
+.conversation_container {
+    margin: 0;
+    padding: 0;
+    padding-bottom: 50px;
+}
+
+@media screen and (max-width: 768px) {
+    .conversation_container {
+        margin: 0 auto;
+        width: 95%;
+    }
+}
+
+@media screen and (min-width: 768px) {
+    .conversation_container {
+        margin: 0 auto;
+        width: 768px;
+    }
+}
+
+@media screen and (min-width: 1200px) {
+    .conversation_container {
+        margin: 0 auto;
+        width: 1000px;
+    }
+}
+
+table.conversation {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    border: 1px solid #ccc;
+    margin: 0;
+    padding: 0;
+}
+
+table.conversation thead {
+    background-color: #eee;
+    text-align: left;
+}
+
+table.conversation thead th {
+    padding: 5px;
+    border: 1px solid #ccc;
+}
+
+table.conversation tbody tr {
+    border: 1px solid #ccc;
+}
+
+table.conversation tbody tr td {
+    padding: 5px;
+    border: 1px solid #ccc;
+}
+
+table.conversation tbody tr td:first-child {
+    width: 20%;
+}
+
+table.conversation tbody tr td:last-child {
+    width: 80%;
+}
+
+.player_message {
+    background-color: #ecffd9;
+}
+
+.ai_message {
+    background-color: #dbf8ff;
+}
+
+.chat_id_change {
+    background-color: #ffe2e2;
+}
+
+.fact_message {
+    background-color: #fff9d9;
+}
+
+span.player_message, span.ai_message, span.chat_id_change, span.fact_message {
+    padding: 1px 5px;
+    border-radius: 5px;
+    font-weight: bold;
+}
