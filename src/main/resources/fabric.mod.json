@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "gptalk",
+  "version": "${version}",
+  "name": "Gptalk",
+  "description": "A plugin that uses OpenAi's GPT models to create conversations with any mob on a variety of subjects.",
+  "authors": [
+    "Yan_Wittmann"
+  ],
+  "contact": {
+    "website": "https://yanwittmann.de",
+    "repo": "TODO: Insert repository"
+  },
+  "license": "MIT",
+  "icon": "assets/gptalk/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "client": [
+      "de.yanwittmann.gptalk.client.GptalkClient"
+    ],
+    "main": [
+      "de.yanwittmann.gptalk.Gptalk"
+    ]
+  },
+  "mixins": [
+    "gptalk.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.14.14",
+    "fabric": "*",
+    "minecraft": "1.19.3"
+  }
+}
