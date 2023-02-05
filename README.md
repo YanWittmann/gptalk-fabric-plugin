@@ -4,8 +4,7 @@ A fabric plugin that uses OpenAi's GPT models to create conversations with any m
 
 **This plugin is a proof of concept only. I will not be maintaining or continuing active development of this plugin.**
 
-![Demo 1](img/demo_1.png)
-![Demo 2](img/demo_2.jpg)
+![Demo 1](doc/img/demo_1.png)
 
 ## Usage
 
@@ -15,8 +14,13 @@ I do not provide any pre-built executables of this plugin. You will have to buil
 To do so, use gradle:
 
 ```bash
-./gradlew build
+gradle build
 ```
+
+The built plugin will be located in `build\libs\gptalk-1.0-SNAPSHOT.jar`.
+
+[Here](doc/setup_server.md) is a small script that will automatically download and set up a fabric server with the
+plugin installed for testing purposes.
 
 ### Properties file
 
@@ -108,3 +112,7 @@ Here's a more detailed description on how to set the analytics up:
 
 Requests will now be sent to the analytics server. You can view the data by visiting the
 [analytics_scripts/conversation_list.php](analytics_scripts/conversation_list.php) file.
+
+Bonus image:
+
+![Demo 2](doc/img/demo_2.jpg)
