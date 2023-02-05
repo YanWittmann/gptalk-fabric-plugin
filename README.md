@@ -22,8 +22,8 @@ To do so, use gradle:
 
 The [configuration file](src/main/resources/mod.properties) contains a list of the available properties. This includes:
 
-- `openai.key` The OpenAi API key (use the `OPENAI_KEY` environment variable when building the plugin for purposes other
-  than testing)
+- `openai.key` The OpenAi API key to use for the API. Use the `OPENAI_KEY` environment variable when building the
+  plugin for purposes other than testing
 - `openai.model` The OpenAi model to use, from a list of the currently available models
 - `gptalk.active` Whether fake responses should be generated to test the plugin instead of using the OpenAi API to
   prevent costs
@@ -34,7 +34,7 @@ The [configuration file](src/main/resources/mod.properties) contains a list of t
 The plugin adds a `/gptalk` command that can be used to start a conversation with a mob.
 
 - `/gptalk start` Starts a conversation with the closest entity around you
-- `/gptalk end` Stops the conversation with the closest entity around you
+- `/gptalk end` Stops the conversation
 - `/gptalk fact [add|remove] [world|entity] <fact|id>` Adds or removes a fact to/from either the currently selected
   entity
   or all entities (`world`)
@@ -48,11 +48,11 @@ are sent with every request to the API.
 
 ## How it works
 
-For every conversation the player and an entity have, the plugin stores the related messages in a data structure and
+For every conversation the player and an entity have, the plugin stores the relevant messages in a data structure and
 keeps track of what player talks to what entity.
 
-On every message the player sends to the entity, a message is generated based on the recent conversations and world
-around the entity. A message is built from:
+On every message the player sends to the entity, a prompt for the AI is generated based on the recent conversations and
+world around the entity. A message is built from:
 
 - `[this happens in a minecraft chat]`
 - `You are a <mob type> living in a <current biome> biome`
@@ -102,7 +102,7 @@ Here's a more detailed description on how to set the analytics up:
 
 1. Create a MySQL database and a user with access to it
 2. Set your database credentials in the [analytics_scripts/db_login_data.php](analytics_scripts/db_login_data.php) file
-3. Copy the files in [analytics_scripts](analytics_scripts) to a directory on your webserver
+3. Copy the files from [analytics_scripts](analytics_scripts) to a directory on your webserver
 4. Enter the URL to the [analytics_scripts/talk_event.php](analytics_scripts/talk_event.php) file in the
    `gptalk.analytics` property
 
