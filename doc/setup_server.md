@@ -7,6 +7,9 @@ Java) to be installed and on the path.
 
 ```bash
 set OPENAI_KEY=
+```
+
+```bash
 git clone https://github.com/YanWittmann/gptalk-fabric-plugin
 cd gptalk-fabric-plugin
 gradle build
