@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GPTalk Conversations</title>
+    <script src='conversations.js' defer></script>
+    <link rel='stylesheet' type='text/css' href='conversation.css'>
+</head>
+<body>
+
+<div class="conversation_container">
+    <h1>GPTalk Conversations</h1>
+    <div id="conversation_filter" class="conversation_filter">
+        <select id="player_filter" onchange="applyConversationFilter()">
+            <option value="">All Players</option>
+        </select>
+        <select id="target_filter" onchange="applyConversationFilter()">
+            <option value="">All Targets</option>
+        </select>
+    </div>
+
+    <span id="conversation_list"></span>
+</div>
+
+</body>
+</html>

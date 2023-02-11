@@ -41,7 +41,6 @@ public class MobTalkCommand implements CommandRegistrationCallback {
 
     @Override
     public void register(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess, CommandManager.RegistrationEnvironment environment) {
-        // new:
         // gptalk start
         // gptalk end
         // gptalk <text>

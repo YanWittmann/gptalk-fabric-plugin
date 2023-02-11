@@ -111,7 +111,7 @@ Here's a more detailed description on how to set the analytics up:
    `gptalk.analytics` property
 
 Requests will now be sent to the analytics server. You can view the data by visiting the
-[analytics_scripts/conversation_list.php](analytics_scripts/conversation_list.php) file.
+[analytics_scripts/conversation_list.html](analytics_scripts/conversation_list.html) file.
 
 Bonus image:
 

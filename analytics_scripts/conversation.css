@@ -4,6 +4,7 @@ html, body {
     overflow-x: hidden;
     background-color: #171e2d;
     color: #fff;
+    font-family: 'Roboto', sans-serif;
 }
 
 h2 {
@@ -39,7 +40,7 @@ h2 {
     }
 }
 
-table.conversation {
+.conversation table {
     width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
@@ -48,30 +49,30 @@ table.conversation {
     padding: 0;
 }
 
-table.conversation thead {
+.conversation table thead {
     background-color: #242424;
     text-align: left;
 }
 
-table.conversation thead th {
+.conversation table thead th {
     padding: 5px;
     border: 1px solid #ccc;
 }
 
-table.conversation tbody tr {
+.conversation table tbody tr {
     border: 1px solid #ccc;
 }
 
-table.conversation tbody tr td {
+.conversation table tbody tr td {
     padding: 5px;
     border: 1px solid #ccc;
 }
 
-table.conversation tbody tr td:first-child {
+.conversation table tbody tr td:first-child {
     width: 20%;
 }
 
-table.conversation tbody tr td:last-child {
+.conversation table tbody tr td:last-child {
     width: 80%;
 }
 
